@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Management System</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+    <link rel="stylesheet" href="my_ajax.css" />
+  </head>
+  <body>
+    <h1>Student Management System</h1>
+    <div class="main-container">
+      <div class="form-container">
+        <button id="btnStu" onclick="getDataFromAPI()">Get DATA</button
+        ><br /><br />
+        <button id="btnCreate" onclick="openModal('create')">Create DATA</button
+        ><br /><br />
+        <button id="btnUpdate" onclick="openModal('update')">Update DATA</button
+        ><br /><br />
+        <button id="btnDelete" onclick="openDeleteModal()">Delete DATA</button>
+      </div>
+      <div id="div_students" class="students-container"></div>
+    </div>
+
+    <!-- 모달 구조 -->
+    <div id="createUpdateModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal('createUpdateModal')"
+          >&times;</span
+        >
+        <h3 id="modalTitle">Create / Update Student</h3>
+        <label>NAME:</label>
+        <input type="text" id="modal_student_name" class="form-control" /><br />
+        <label>AGE:</label>
+        <input
+          type="number"
+          id="modal_student_age"
+          class="form-control"
+        /><br />
+        <label>GENDER:</label>
+        <select id="modal_student_gender" class="form-control">
+          <option value="Male">Male</option>
+          <option value="Female">Female</option></select
+        ><br />
+        <label>STUDENT ID:</label>
+        <input
+          type="number"
+          id="modal_student_studentID"
+          class="form-control"
+        /><br />
+        <input type="hidden" id="modal_student_id" />
+        <button onclick="saveData()">Save</button>
+      </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div id="deleteModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal('deleteModal')">&times;</span>
+        <h3>Delete Student</h3>
+        <label>ID:</label>
+        <input
+          type="text"
+          id="delete_student_id"
+          placeholder="Enter student ID to delete"
+        />
+        <button onclick="deleteData()">Delete</button>
+      </div>
+    </div>
+
+    <script>
+      const API_URL = "https://672ef45a229a881691f16451.mockapi.io/students";
+      let currentMode = "create";
+
+      // 페이지 로드 시 데이터 자동 로드
+      $(document).ready(function () {
+        getDataFromAPI();
+      });
+
+      function getDataFromAPI() {
+        $.ajax({
+          url: API_URL,
+          method: "GET",
+          success: function (students) {
+            $("#div_students").html("");
+            students.forEach((item) => {
+              $("#div_students").append(
+                `<div>ID: ${item.id} | Name: ${item.name} | Age: ${item.age} | Gender: ${item.gender} | Student ID: ${item.studentID}</div>`
+              );
+            });
+          },
+          error: function () {
+            alert("데이터를 불러오지 못했습니다.");
+          },
+        });
+      }
+
+      // 모달 열기 함수
+      function openModal(mode) {
+        currentMode = mode;
+        $("#createUpdateModal").css("display", "block");
+        $("#modalTitle").text(
+          mode === "create" ? "Create New Student" : "Update Student"
+        );
+
+        if (mode === "update") {
+          const id = prompt("수정할 학생의 ID를 입력하세요:");
+          if (id) {
+            $.ajax({
+              url: `${API_URL}/${id}`,
+              method: "GET",
+              success: function (data) {
+                $("#modal_student_name").val(data.name);
+                $("#modal_student_age").val(data.age);
+                $("#modal_student_gender").val(data.gender);
+                $("#modal_student_studentID").val(data.studentID);
+                $("#modal_student_id").val(data.id);
+              },
+              error: function () {
+                alert("데이터를 불러오지 못했습니다.");
+              },
+            });
+          }
+        } else {
+          // 필드 초기화
+          $("#modal_student_name").val("");
+          $("#modal_student_age").val("");
+          $("#modal_student_gender").val("Male");
+          $("#modal_student_studentID").val("");
+          $("#modal_student_id").val("");
+        }
+      }
+
+      function openDeleteModal() {
+        $("#deleteModal").css("display", "block");
+      }
+
+      // 모달 닫기 함수
+      function closeModal(modalId) {
+        $(`#${modalId}`).css("display", "none");
+      }
+
+      // 데이터 저장 함수
+      function saveData() {
+        const data = {
+          name: $("#modal_student_name").val(),
+          age: $("#modal_student_age").val(),
+          gender: $("#modal_student_gender").val(),
+          studentID: parseInt($("#modal_student_studentID").val()),
+        };
+        const id = $("#modal_student_id").val();
+
+        if (currentMode === "create") {
+          $.ajax({
+            url: API_URL,
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify(data),
+            success: function () {
+              alert("등록 성공!");
+              getDataFromAPI();
+              closeModal("createUpdateModal");
+            },
+            error: function () {
+              alert("데이터 생성 실패!");
+            },
+          });
+        } else if (currentMode === "update") {
+          $.ajax({
+            url: `${API_URL}/${id}`,
+            method: "PUT",
+            contentType: "application/json",
+            data: JSON.stringify(data),
+            success: function () {
+              alert("수정 성공!");
+              getDataFromAPI();
+              closeModal("createUpdateModal");
+            },
+            error: function () {
+              alert("데이터 수정 실패!");
+            },
+          });
+        }
+      }
+
+      // 데이터 삭제 함수
+      function deleteData() {
+        const id = $("#delete_student_id").val();
+        if (!id) {
+          alert("삭제할 일반 ID를 입력하세요. (studentID X)");
+          return;
+        }
+
+        $.ajax({
+          url: `${API_URL}/${id}`,
+          method: "DELETE",
+          success: function () {
+            alert("삭제 성공!");
+            getDataFromAPI();
+            closeModal("deleteModal");
+          },
+          error: function () {
+            alert("데이터 삭제 실패: 해당 ID가 존재하지 않습니다.");
+          },
+        });
+      }
+    </script>
+  </body>
+</html>
